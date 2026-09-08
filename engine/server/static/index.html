@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Velryn — Live World</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base: #06060a;
+    --bg-panel: rgba(20, 20, 31, 0.65);
+    --bg-chip: #151522;
+    --line: rgba(143, 139, 168, 0.15);
+    --gold: #e2c47c;
+    --gold-dim: rgba(216, 178, 92, 0.25);
+    --purple: #b39af7;
+    --purple-glow: rgba(169, 138, 246, 0.4);
+    --text: #f0eef5;
+    --dim: #9b97b0;
+    --hp-good: #6fd18a;
+    --hp-mid: #e0c15b;
+    --hp-bad: #ed6d68;
+    --safe: rgba(216, 178, 92, 0.12);
+    --tile: 60px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: var(--bg-base);
+    background-image:
+      radial-gradient(circle at 10% 0%, rgba(169, 138, 246, 0.15), transparent 40%),
+      radial-gradient(circle at 90% 100%, rgba(216, 178, 92, 0.12), transparent 50%),
+      url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    color: var(--text);
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    padding: 24px 32px;
+    overflow-x: hidden;
+  }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+    gap: 16px; max-width: 1360px; margin: 0 auto 24px auto;
+    border-bottom: 1px solid var(--line); padding-bottom: 20px;
+    animation: fadeInDown 0.8s ease-out;
+  }
+
+  h1 {
+    font-family: 'Cinzel', serif; font-size: 2.2rem; margin: 0;
+    letter-spacing: 0.05em; background: linear-gradient(135deg, var(--gold), var(--purple));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    text-shadow: 0 4px 20px rgba(169, 138, 246, 0.2);
+  }
+
+  .subtitle { color: var(--dim); font-size: 0.95rem; margin-top: 6px; font-weight: 400; }
+
+  .status {
+    display: flex; align-items: center; gap: 12px; font-size: 0.85rem; color: var(--dim);
+    background: var(--bg-panel); padding: 8px 16px; border-radius: 999px;
+    border: 1px solid var(--line); backdrop-filter: blur(10px);
+  }
+
+  .dot {
+    width: 10px; height: 10px; border-radius: 50%; background: var(--hp-bad);
+    box-shadow: 0 0 10px var(--hp-bad); transition: all 0.4s ease;
+  }
+  .dot.live { background: var(--hp-good); box-shadow: 0 0 12px var(--hp-good); animation: pulseLive 2s infinite; }
+  .tick-badge { font-family: 'Cinzel', serif; color: var(--gold); font-size: 0.9rem; font-weight: 600; letter-spacing: 0.05em; }
+
+  .layout { max-width: 1360px; margin: 0 auto; display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+
+  .map-wrap {
+    flex: 2; min-width: 600px; background: var(--bg-panel); backdrop-filter: blur(16px);
+    border: 1px solid var(--line); border-radius: 16px; padding: 24px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+    overflow: auto; animation: fadeInUp 0.8s ease-out; position: relative;
+  }
+
+  #mapOuter {
+    position: relative; border-radius: 8px;
+    background-image:
+      linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: var(--tile) var(--tile); border: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .tile {
+    position: absolute; background: rgba(22, 22, 34, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.03); border-radius: 8px;
+    transform: scale(0.92); transition: transform 0.3s ease, background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    cursor: pointer;
+  }
+  .tile:hover { transform: scale(1); background: rgba(169, 138, 246, 0.12); border-color: rgba(169, 138, 246, 0.35); z-index: 1; box-shadow: 0 0 0 1px rgba(169,138,246,0.3) inset; }
+  .tile.safe { background: var(--safe); border-color: var(--gold-dim); box-shadow: inset 0 0 20px rgba(216, 178, 92, 0.1); }
+  .tile.dest-pulse { animation: destPulse 1.1s ease-out 1; }
+  .tile.dest-invalid { animation: destInvalid 0.4s ease-out 1; }
+  .tile.queued { border: 2px dashed var(--purple); box-shadow: 0 0 0 2px rgba(169,138,246,0.25) inset; animation: queuedPulse 1.6s ease-in-out infinite; z-index: 2; }
+
+  /* --- Reachability hover feedback ---------------------------------------
+     The movement system only understands one orthogonal step at a time
+     (N/S/E/W) — no diagonals, no multi-tile jumps. Before this, clicking a
+     far-away or diagonal tile silently moved you one step in whatever
+     direction happened to be "dominant", with zero indication of why you
+     didn't end up where you clicked. Hovering now previews exactly what
+     will happen: green means "this exact tile is one valid step away",
+     red means "not reachable directly (too far, or diagonal)". Uses
+     !important only on background so it reliably wins over the generic
+     .tile:hover rule above regardless of stylesheet order. */
+  .tile.tile-reachable {
+    background: rgba(111, 209, 138, 0.32) !important;
+    border-color: rgba(111, 209, 138, 0.55);
+    box-shadow: 0 0 0 1px rgba(111, 209, 138, 0.45) inset;
+  }
+  .tile.tile-unreachable {
+    background: rgba(237, 109, 104, 0.30) !important;
+    border-color: rgba(237, 109, 104, 0.55);
+    box-shadow: 0 0 0 1px rgba(237, 109, 104, 0.45) inset;
+    cursor: not-allowed;
+  }
+
+  .city-label {
+    position: absolute; font-family: 'Cinzel', serif; font-size: 0.75rem; font-weight: 700;
+    color: var(--gold); letter-spacing: 0.05em; pointer-events: none;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.9), 0 0 5px var(--gold-dim); z-index: 3;
+  }
+
+  .poi-label {
+    position: absolute; font-family: 'Cinzel', serif; font-size: 0.65rem; color: var(--purple);
+    letter-spacing: 0.04em; pointer-events: none; text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+    white-space: nowrap; background: rgba(10, 10, 15, 0.7); padding: 2px 8px;
+    border-radius: 4px; border: 1px solid rgba(169, 138, 246, 0.2); backdrop-filter: blur(4px); z-index: 3;
+  }
+  .poi-label .poi-icon { margin-right: 4px; }
+  .tile.poi { border-color: rgba(169, 138, 246, 0.2); }
+
+  .npc-chip {
+    position: absolute; width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; font-size: 16px;
+    background: var(--bg-chip); border: 2px solid var(--purple);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5); cursor: pointer;
+    transition: left 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), top 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s, transform 0.2s;
+    z-index: 4;
+  }
+
+  .npc-chip.player { border-color: var(--hp-good); box-shadow: 0 4px 12px rgba(111, 209, 138, 0.5); }
+
+  .npc-chip.queued-target { border-color: var(--purple); animation: queuedPulse 1.6s ease-in-out infinite; }
+
+  .npc-chip:not(.monster)::before {
+    content: ''; position: absolute; inset: -6px; border-radius: 50%;
+    border: 1px solid var(--purple); animation: ping 2.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+    opacity: 0; pointer-events: none;
+  }
+  .npc-chip.player::before { border-color: var(--hp-good); }
+
+  .npc-chip:hover { transform: scale(1.15) translateY(-2px); box-shadow: 0 6px 16px var(--purple-glow); z-index: 5; }
+  .npc-chip.player:hover { box-shadow: 0 6px 16px rgba(111, 209, 138, 0.6); }
+
+  .npc-chip.monster { border-color: var(--hp-bad); background: #241419; }
+  .npc-chip.dead { opacity: 0.2; filter: grayscale(1); pointer-events: none; }
+
+  .npc-chip.selected { box-shadow: 0 0 0 3px #fff, 0 6px 16px var(--purple-glow); z-index: 6; transform: scale(1.12); }
+  .npc-chip.hit-flash { animation: hitFlash 0.5s ease-out 1; }
+
+  .npc-chip .mini-hp {
+    position: absolute; bottom: -8px; left: 2px; right: 2px; height: 4px;
+    background: rgba(0,0,0,0.8); border-radius: 2px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .npc-chip .mini-hp > span { display: block; height: 100%; transition: width 0.3s ease; }
+
+  .name-label {
+    position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
+    font-size: 0.6rem; font-weight: 500; color: var(--text); background: rgba(10,10,15,0.8);
+    padding: 2px 6px; border-radius: 4px; white-space: nowrap; pointer-events: none;
+    border: 1px solid rgba(255,255,255,0.05); backdrop-filter: blur(4px);
+  }
+
+  .float-text {
+    position: absolute; font-family: 'Cinzel', serif; font-weight: 700; font-size: 0.95rem;
+    pointer-events: none; z-index: 8; animation: floatUp 1.1s ease-out forwards;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.9);
+  }
+  .float-text.dmg { color: var(--hp-bad); }
+  .float-text.heal { color: var(--hp-good); }
+
+  .speech-bubble {
+    position: absolute; max-width: 190px; background: rgba(12, 12, 20, 0.95);
+    border: 1px solid rgba(169, 138, 246, 0.4); border-radius: 10px; padding: 6px 10px;
+    font-size: 0.72rem; line-height: 1.35; color: var(--text); z-index: 9;
+    pointer-events: none; animation: bubbleIn 0.25s ease-out, bubbleOut 0.4s ease-in 3.6s forwards;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  }
+  .speech-bubble::after {
+    content: ''; position: absolute; bottom: -6px; left: 16px; width: 10px; height: 10px;
+    background: rgba(12, 12, 20, 0.95); border-right: 1px solid rgba(169, 138, 246, 0.4);
+    border-bottom: 1px solid rgba(169, 138, 246, 0.4); transform: rotate(45deg);
+  }
+
+  .action-menu {
+    position: absolute; z-index: 20; background: rgba(14, 14, 22, 0.97);
+    border: 1px solid rgba(169, 138, 246, 0.35); border-radius: 10px; padding: 6px;
+    display: flex; flex-direction: column; gap: 3px; min-width: 140px;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.6); animation: fadeIn 0.15s ease-out;
+  }
+  .action-menu .menu-title {
+    font-family: 'Cinzel', serif; font-size: 0.72rem; color: var(--gold);
+    padding: 6px 8px 4px 8px; letter-spacing: 0.04em; border-bottom: 1px solid var(--line); margin-bottom: 2px;
+  }
+  .action-menu button {
+    background: transparent; border: none; color: var(--text); text-align: left;
+    padding: 8px 8px; border-radius: 6px; cursor: pointer; font-size: 0.82rem;
+    display: flex; align-items: center; gap: 8px; transition: background 0.15s;
+  }
+  .action-menu button:hover { background: rgba(169, 138, 246, 0.18); }
+  .action-menu button.danger:hover { background: rgba(237, 109, 104, 0.2); }
+
+  .legend {
+    display: flex; gap: 20px; flex-wrap: wrap; margin-top: 20px; font-size: 0.8rem; color: var(--dim);
+    background: rgba(0,0,0,0.2); padding: 12px 16px; border-radius: 8px;
+  }
+  .legend span.swatch { display: inline-block; width: 12px; height: 12px; border-radius: 4px; margin-right: 6px; vertical-align: middle; }
+  .legend .hint { margin-left: auto; color: #76728f; font-style: italic; }
+
+  .sidebar { flex: 1; min-width: 340px; max-width: 420px; display: flex; flex-direction: column; gap: 20px; }
+
+  .panel {
+    background: var(--bg-panel); backdrop-filter: blur(16px);
+    border: 1px solid var(--line); border-radius: 16px; padding: 20px;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+    animation: fadeInRight 0.8s ease-out; animation-fill-mode: both;
+  }
+  .panel:nth-child(2) { animation-delay: 0.1s; }
+  .panel:nth-child(3) { animation-delay: 0.2s; }
+
+  .panel h2 {
+    font-family: 'Cinzel', serif; font-size: 1rem; color: var(--gold);
+    margin: 0 0 16px 0; letter-spacing: 0.05em; text-transform: uppercase;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .panel h2 .toggle-link { font-size: 0.7rem; color: var(--dim); text-transform: none; cursor: pointer; font-family: 'Inter', sans-serif; letter-spacing: 0; }
+  .panel h2 .toggle-link:hover { color: var(--purple); }
+
+  .hud-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .hud-name { font-family: 'Cinzel', serif; color: var(--hp-good); font-size: 1.05rem; }
+  .hud-stat { font-size: 0.78rem; color: var(--dim); }
+  .hud-stat b { color: var(--text); }
+  .advanced-panel { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); }
+  .advanced-panel.open { display: block; }
+  .d-pad-btn {
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: var(--text);
+    border-radius: 8px; padding: 10px; font-weight: bold; cursor: pointer; transition: all 0.2s; font-size: 0.85rem;
+  }
+  .d-pad-btn:hover { background: var(--purple); color: #000; border-color: var(--purple); transform: scale(1.05); }
+
+  .pending-banner {
+    background: rgba(169, 138, 246, 0.14); border: 1px solid rgba(169, 138, 246, 0.4);
+    color: var(--purple); font-size: 0.78rem; padding: 8px 10px; border-radius: 8px;
+    margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+    animation: pendingPulse 1.6s ease-in-out infinite;
+  }
+  .pending-banner .spinner {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--purple); flex-shrink: 0;
+    animation: pulseLive 1.2s infinite;
+  }
+
+  #roster { display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow-y: auto; padding-right: 4px; }
+  .roster-item { background: rgba(0,0,0,0.2); border: 1px solid transparent; padding: 10px 12px; cursor: pointer; border-radius: 8px; transition: all 0.2s ease; }
+  .roster-item:hover { background: rgba(169, 138, 246, 0.08); border-color: rgba(169, 138, 246, 0.2); transform: translateX(4px); }
+  .roster-item.is-selected { border-color: var(--purple); background: rgba(169, 138, 246, 0.12); }
+  .roster-name { font-weight: 600; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center;}
+  .roster-name .role { color: var(--dim); font-weight: 400; font-size: 0.75rem; background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px;}
+
+  .hpbar { background: rgba(0,0,0,0.6); border-radius: 4px; height: 6px; margin: 8px 0; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);}
+  .hpbar > div { height: 100%; transition: width 0.4s ease; }
+  .last-action { color: var(--text); font-size: 0.8rem; line-height: 1.4; opacity: 0.8; }
+
+  #feed { display: flex; flex-direction: column-reverse; gap: 8px; max-height: 220px; overflow-y: auto; padding-right: 4px;}
+  .feed-line {
+    font-size: 0.82rem; color: var(--dim); background: rgba(0,0,0,0.2);
+    border-left: 3px solid var(--purple); padding: 8px 12px; border-radius: 0 6px 6px 0;
+    animation: slideInLeft 0.3s ease-out;
+  }
+  .feed-line b { color: var(--gold); cursor: pointer; transition: color 0.2s; }
+  .feed-line b:hover { color: #fff; }
+
+  footer { max-width: 1360px; margin: 32px auto 0 auto; text-align: center; color: var(--dim); font-size: 0.8rem; opacity: 0.6; padding-bottom: 24px; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+
+  .modal {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center; z-index: 100;
+    opacity: 1; transition: opacity 0.3s ease;
+  }
+  .modal.hidden { opacity: 0; pointer-events: none; }
+  .modal-content {
+    background: var(--bg-panel); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px; width: min(600px, 92vw); max-height: 85vh;
+    display: flex; flex-direction: column; padding: 28px;
+    box-shadow: 0 30px 100px rgba(0,0,0,0.8); position: relative;
+    transform: translateY(0); transition: transform 0.3s ease;
+  }
+  .modal.hidden .modal-content { transform: translateY(20px); }
+
+  .close-btn {
+    position: absolute; top: 20px; right: 20px;
+    background: rgba(255,255,255,0.05); border: none; color: var(--text);
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; cursor: pointer; transition: background 0.2s;
+  }
+  .close-btn:hover { background: rgba(255,255,255,0.15); }
+
+  #historyTitle { font-family: 'Cinzel', serif; color: var(--gold); margin: 0 0 4px 0; font-size: 1.5rem; text-shadow: 0 2px 10px rgba(226, 196, 124, 0.2);}
+  #historySub { color: var(--dim); font-size: 0.85rem; margin-bottom: 20px; }
+  #historyFilterRow { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; font-size: 0.85rem; color: var(--text); background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px;}
+  #historyFilter { background: rgba(255,255,255,0.05); color: var(--text); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 6px 12px; font-size: 0.85rem; outline: none; flex: 1; }
+  #historyFilter:focus { border-color: var(--purple); }
+  #historyFilter option { background: var(--bg-base); }
+  #historyList { overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 6px; }
+  .history-line { font-size: 0.88rem; line-height: 1.5; background: rgba(0,0,0,0.3); border-left: 3px solid var(--purple); padding: 12px 16px; border-radius: 0 8px 8px 0; }
+  .history-empty { color: var(--dim); font-size: 0.9rem; text-align: center; padding: 40px 0; }
+
+  #convTitle { font-family: 'Cinzel', serif; color: var(--gold); margin: 0 0 4px 0; font-size: 1.4rem; }
+  #convSub { color: var(--dim); font-size: 0.82rem; margin-bottom: 16px; }
+  #convThread { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 4px 4px 12px 4px; min-height: 180px; }
+  .conv-empty { color: var(--dim); font-size: 0.88rem; text-align: center; padding: 40px 0; font-style: italic; }
+  .conv-msg { max-width: 78%; padding: 9px 13px; border-radius: 12px; font-size: 0.88rem; line-height: 1.4; }
+  .conv-msg.me { align-self: flex-end; background: rgba(111, 209, 138, 0.18); border: 1px solid rgba(111, 209, 138, 0.3); border-bottom-right-radius: 3px; }
+  .conv-msg.them { align-self: flex-start; background: rgba(169, 138, 246, 0.14); border: 1px solid rgba(169, 138, 246, 0.28); border-bottom-left-radius: 3px; }
+  .conv-msg .who { display: block; font-size: 0.68rem; color: var(--dim); margin-bottom: 3px; }
+  #convInputRow { display: flex; gap: 8px; margin-top: 12px; }
+  #convInput { flex: 1; padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--line); color: var(--text); outline: none; }
+  #convInput:focus { border-color: var(--purple); }
+  #convSendBtn { padding: 12px 18px; background: var(--purple); color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+  #convSendBtn:disabled { opacity: 0.5; cursor: default; }
+  #convStatus { font-size: 0.75rem; color: var(--dim); margin-top: 6px; height: 16px; }
+
+  #toastLayer { position: fixed; bottom: 24px; right: 24px; z-index: 200; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+  .toast {
+    background: rgba(14, 14, 22, 0.96); border: 1px solid var(--line); border-left: 3px solid var(--purple);
+    color: var(--text); padding: 10px 16px; border-radius: 8px; font-size: 0.85rem;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.5); animation: toastIn 0.25s ease-out, toastOut 0.4s ease-in 2.6s forwards;
+    max-width: 320px;
+  }
+  .toast.error { border-left-color: var(--hp-bad); }
+  .toast.success { border-left-color: var(--hp-good); }
+
+  @keyframes ping { 0% { transform: scale(1); opacity: 0.8; } 80%, 100% { transform: scale(1.8); opacity: 0; } }
+  @keyframes pulseLive { 0% { box-shadow: 0 0 0 0 rgba(111, 209, 138, 0.4); } 70% { box-shadow: 0 0 0 8px rgba(111, 209, 138, 0); } 100% { box-shadow: 0 0 0 0 rgba(111, 209, 138, 0); } }
+  @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes slideInLeft { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes destPulse { 0% { box-shadow: 0 0 0 0 rgba(169,138,246,0.7); } 100% { box-shadow: 0 0 0 14px rgba(169,138,246,0); } }
+  @keyframes destInvalid { 0%, 100% { transform: scale(0.92) translateX(0); } 25% { transform: scale(0.92) translateX(-4px); } 75% { transform: scale(0.92) translateX(4px); } }
+  @keyframes queuedPulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+  @keyframes pendingPulse { 0%, 100% { opacity: 0.8; } 50% { opacity: 1; } }
+  @keyframes hitFlash { 0% { filter: brightness(1); } 30% { filter: brightness(2.4) saturate(2); box-shadow: 0 0 20px var(--hp-bad); } 100% { filter: brightness(1); } }
+  @keyframes floatUp { 0% { opacity: 0; transform: translateY(0); } 15% { opacity: 1; } 100% { opacity: 0; transform: translateY(-38px); } }
+  @keyframes bubbleIn { from { opacity: 0; transform: translateY(6px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes bubbleOut { to { opacity: 0; } }
+  @keyframes toastIn { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes toastOut { to { opacity: 0; transform: translateX(30px); } }
+
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🗺️ Velryn</h1>
+    <div class="subtitle">Autonomous AI-driven NPCs — and You.</div>
+  </div>
+  <div class="status">
+    <span class="tick-badge" id="tick">TICK —</span>
+    <span class="dot" id="dot"></span>
+    <span id="statusText">CONNECTING...</span>
+  </div>
+</header>
+
+<div class="layout">
+  <div class="map-wrap">
+    <div id="mapOuter">
+      <div id="tiles"></div>
+      <div id="npcLayer"></div>
+    </div>
+    <div class="legend">
+      <div><span class="swatch" style="background:var(--hp-good); box-shadow: 0 0 8px var(--hp-good)"></span>You</div>
+      <div><span class="swatch" style="background:var(--purple); box-shadow: 0 0 8px var(--purple)"></span>Character (AI)</div>
+      <div><span class="swatch" style="background:var(--hp-bad)"></span>Monster</div>
+      <div><span class="swatch" style="background:var(--safe); border: 1px solid var(--gold-dim)"></span>Safe Zone</div>
+      <div><span class="swatch" style="background:rgba(111,209,138,0.6)"></span>Reachable (1 step)</div>
+      <div><span class="swatch" style="background:rgba(237,109,104,0.6)"></span>Too far / diagonal</div>
+      <div class="hint">Click a tile to move · Click a character to interact</div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="panel" id="hudPanel">
+      <h2>Your Character <span class="toggle-link" id="advancedToggle">Advanced controls ▾</span></h2>
+      <div id="hudBody">Waiting for your character to appear...</div>
+      <div class="advanced-panel" id="advancedPanel">
+        <div style="font-size:0.75rem; color: var(--dim); margin-bottom: 10px;">Direct step (same as clicking an adjacent tile), or type a free command such as <i>use potion</i>, <i>buy sword from Blacksmith</i>, <i>defend</i>.</div>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 160px; margin: 0 auto 16px auto;">
+          <div></div>
+          <button class="d-pad-btn" onclick="movePlayer('N')">N</button>
+          <div></div>
+          <button class="d-pad-btn" onclick="movePlayer('W')">W</button>
+          <button class="d-pad-btn" onclick="movePlayer('S')">S</button>
+          <button class="d-pad-btn" onclick="movePlayer('E')">E</button>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="freeCommandInput" placeholder="Free command..." style="flex: 1; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--line); color: var(--text); outline: none; font-size: 0.85rem;">
+          <button onclick="submitFreeCommand()" style="padding: 10px 14px; background: var(--purple); color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;">Send</button>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Inhabitants</h2>
+      <div id="roster">Waiting for the first tick...</div>
+    </div>
+    <div class="panel">
+      <h2>World Feed</h2>
+      <div id="feed"></div>
+    </div>
+  </div>
+</div>
+
+<footer>As long as this tab is open, the world keeps running — close it and it pauses, saving AI API calls.</footer>
+
+<div class="modal hidden" id="historyModal">
+  <div class="modal-content">
+    <button class="close-btn" id="closeHistory">✕</button>
+    <h2 id="historyTitle">—</h2>
+    <div id="historySub">Personal history, most recent first</div>
+    <div id="historyFilterRow">
+      Filter by interaction with:
+      <select id="historyFilter"><option value="">All</option></select>
+    </div>
+    <div id="historyList">Loading...</div>
+  </div>
+</div>
+
+<div class="modal hidden" id="convModal">
+  <div class="modal-content" style="width: min(480px, 92vw); max-height: 78vh;">
+    <button class="close-btn" id="closeConv">✕</button>
+    <h2 id="convTitle">—</h2>
+    <div id="convSub">Conversation</div>
+    <div id="convThread"></div>
+    <div id="convInputRow">
+      <input type="text" id="convInput" placeholder="Say something...">
+      <button id="convSendBtn">Send</button>
+    </div>
+    <div id="convStatus"></div>
+  </div>
+</div>
+
+<div id="toastLayer"></div>
+
+<script>
+
+const TILE = 60;
+const PLAYER_TOKEN = "dev-token-123";
+const ENDPOINTS = {
+  events: '/events',
+  history: (name) => '/history?npc=' + encodeURIComponent(name),
+  playerAction: '/player-action',
+};
+const ROLE_ICON = {
+  'Explorer': '🗺️', 'Guild Smith': '🔨', 'Cartographer': '📐',
+  'Veteran Hunter': '🏹', 'Relic Hunter': '💎', 'Merchant': '💰',
+  'Mercenary': '⚔️', 'Scholar': '📖', 'Beast Tamer': '🐾', 'Monster': '☠️',
+  'Player': '👤'
+};
+
+const state = {
+  gridW: 0, gridH: 0,
+  npcElements: {},
+  lastActions: {},
+  lastHP: {},
+  knownNames: new Set(),
+  myPlayerName: null,
+  lastSnapshot: null,
+  seenDialogueCount: 0,
+  selectedName: null,
+  activeConversationWith: null,
+  pendingAction: null,
+  pendingSinceTurn: null,
+  queuedTileEl: null,
+  queuedTargetEl: null,
+};
+
+async function postPlayerAction(actionType, value) {
+  if (!state.myPlayerName) throw new Error('No player character yet.');
+  const res = await fetch(ENDPOINTS.playerAction, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Player-Token': PLAYER_TOKEN },
+    body: JSON.stringify({ name: state.myPlayerName, actionType, value }),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(text || ('Request failed (' + res.status + ')'));
+  }
+  return res.json();
+}
+
+function doMove(direction) {
+  return postPlayerAction('move', direction);
+}
+function doCustom(command) {
+  return postPlayerAction('custom', command);
+}
+function doTalk(targetName, message) {
+  return doCustom('talk ' + targetName + ': ' + message);
+}
+function doAttack(targetName) {
+  return doCustom('attack ' + targetName);
+}
+
+// --- Reachability check --------------------------------------------------
+// The engine's MOVE only accepts a single orthogonal step (N/S/E/W) — no
+// diagonals, no multi-tile jumps in one go. This is the single source of
+// truth both the hover preview (buildTiles) and the click handler
+// (handleTileClick) use, so they can never disagree about what counts as
+// reachable.
+function isCardinalAdjacent(x, y) {
+  if (!state.myPlayerName || !state.lastSnapshot) return false;
+  const me = state.lastSnapshot.npcs[state.myPlayerName];
+  if (!me) return false;
+  const dx = x - me.Position.X;
+  const dy = y - me.Position.Y;
+  // Exactly one of the two axes differs by 1, the other by 0 — i.e. a
+  // straight orthogonal step. (|dx|+|dy| === 1 with integer coords can only
+  // mean that.) A diagonal tile has |dx|===1 AND |dy|===1, which sums to 2,
+  // so it's correctly excluded here too.
+  return (Math.abs(dx) + Math.abs(dy)) === 1;
+}
+
+// --- "queued for next tick" indicator ---------------------------------
+// Every player action here is applied immediately server-side, but the
+// browser only learns about the result on the next SSE snapshot, which is
+// only pushed once per world tick (can be up to a minute away). Without
+// this, clicking a tile just... does nothing visible for a while, and it's
+// easy to think the click didn't register at all. This keeps a small,
+// persistent "next tick: ..." indicator up (in the HUD, and optionally on
+// the destination tile or target NPC) until a snapshot from a later turn
+// than the one we were on when the action was sent actually arrives.
+function setPendingAction(text, opts) {
+  clearQueuedHighlights();
+  state.pendingAction = text;
+  state.pendingSinceTurn = state.lastSnapshot ? state.lastSnapshot.turn : null;
+  if (opts && opts.tileEl) {
+    opts.tileEl.classList.add('queued');
+    state.queuedTileEl = opts.tileEl;
+  }
+  if (opts && opts.targetEl) {
+    opts.targetEl.classList.add('queued-target');
+    state.queuedTargetEl = opts.targetEl;
+  }
+  refreshHUD();
+}
+
+function clearQueuedHighlights() {
+  if (state.queuedTileEl) { state.queuedTileEl.classList.remove('queued'); state.queuedTileEl = null; }
+  if (state.queuedTargetEl) { state.queuedTargetEl.classList.remove('queued-target'); state.queuedTargetEl = null; }
+}
+
+function clearPendingAction() {
+  state.pendingAction = null;
+  state.pendingSinceTurn = null;
+  clearQueuedHighlights();
+  refreshHUD();
+}
+
+function refreshHUD() {
+  renderHUD(state.lastSnapshot ? (state.lastSnapshot.npcs || {}) : {});
+}
+
+async function fetchHistory(name) {
+  const res = await fetch(ENDPOINTS.history(name));
+  if (!res.ok) throw new Error('no history yet');
+  const data = await res.json();
+  return data.history || [];
+}
+
+const es = new EventSource(ENDPOINTS.events);
+es.onopen = () => { dotEl.classList.add('live'); statusEl.textContent = 'ONLINE'; statusEl.style.color = 'var(--hp-good)'; };
+es.onerror = () => { dotEl.classList.remove('live'); statusEl.textContent = 'RECONNECTING...'; statusEl.style.color = 'var(--hp-mid)'; };
+es.onmessage = (e) => {
+  try { onSnapshot(JSON.parse(e.data)); } catch (err) {  }
+};
+
+function onSnapshot(data) {
+  state.lastSnapshot = data;
+  tickEl.textContent = 'TICK ' + data.turn;
+
+  // A full tick has now resolved since this action was queued -- whatever
+  // was going to happen to it already happened, so the "next tick" banner
+  // and highlights no longer apply.
+  if (state.pendingAction && state.pendingSinceTurn !== null && data.turn > state.pendingSinceTurn) {
+    state.pendingAction = null;
+    state.pendingSinceTurn = null;
+    clearQueuedHighlights();
+  }
+
+  if (state.gridW !== data.width || state.gridH !== data.height) {
+    buildTiles(data.width, data.height, data.safeZone, data.biome, data.pois);
+  }
+
+  const npcs = data.npcs || {};
+
+  for (const name in npcs) {
+    if (npcs[name].IsPlayerControlled) { state.myPlayerName = name; break; }
+  }
+
+  processCombatAndSpeechFeedback(npcs, data.dialogue || []);
+  renderRoster(npcs);
+  renderHUD(npcs);
+  renderFeed(npcs);
+  if (state.activeConversationWith) renderConversation(state.activeConversationWith);
+
+  const seen = new Set();
+  for (const name in npcs) {
+    seen.add(name);
+    state.knownNames.add(name);
+    upsertChip(npcs[name]);
+  }
+  for (const name in state.npcElements) {
+    if (!seen.has(name)) { state.npcElements[name].remove(); delete state.npcElements[name]; }
+  }
+}
+
+function processCombatAndSpeechFeedback(npcs, dialogue) {
+
+  for (const name in npcs) {
+    const npc = npcs[name];
+    const prevHP = state.lastHP[name];
+    if (prevHP !== undefined && npc.HP !== prevHP && npc.HP > 0 && prevHP > 0) {
+      const delta = npc.HP - prevHP;
+      spawnFloatText(name, delta);
+      if (delta < 0) flashHit(name);
+    }
+    state.lastHP[name] = npc.HP;
+  }
+
+  if (dialogue.length > state.seenDialogueCount) {
+    const fresh = dialogue.slice(state.seenDialogueCount);
+    fresh.forEach(entry => spawnSpeechBubble(entry.from, entry.text));
+    state.seenDialogueCount = dialogue.length;
+  } else if (dialogue.length < state.seenDialogueCount) {
+    state.seenDialogueCount = dialogue.length;
+  }
+}
+
+function biomeTint(name) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  const hue = hash % 360;
+  return `hsla(${hue}, 60%, 40%, 0.25)`;
+}
+
+function buildTiles(w, h, safeZone, biome, pois) {
+  state.gridW = w; state.gridH = h;
+  mapOuterEl.style.width = (w * TILE) + 'px';
+  mapOuterEl.style.height = (h * TILE) + 'px';
+  tilesEl.innerHTML = '';
+  let cityLabeled = false;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const tile = document.createElement('div');
+      const safe = safeZone && safeZone[x] && safeZone[x][y];
+      const name = biome && biome[x] ? biome[x][y] : '';
+      const isPOI = name && name !== 'Wildlands' && !safe;
+      tile.className = 'tile' + (safe ? ' safe' : '') + (isPOI ? ' poi' : '');
+      tile.style.left = (x * TILE) + 'px';
+      tile.style.top = (y * TILE) + 'px';
+      tile.style.width = TILE + 'px';
+      tile.style.height = TILE + 'px';
+      tile.dataset.x = x; tile.dataset.y = y;
+      if (isPOI) tile.style.background = biomeTint(name);
+      if (name) tile.title = name;
+
+      // Reachability preview: recomputed live on every hover (not baked in
+      // at build time), so it always reflects the player's CURRENT
+      // position even though buildTiles itself only runs once per map size.
+      tile.addEventListener('mouseenter', () => {
+        if (!state.myPlayerName || !state.lastSnapshot || !state.lastSnapshot.npcs[state.myPlayerName]) return;
+        const me = state.lastSnapshot.npcs[state.myPlayerName];
+        if (x === me.Position.X && y === me.Position.Y) return; // standing on it — nothing to preview
+        tile.classList.add(isCardinalAdjacent(x, y) ? 'tile-reachable' : 'tile-unreachable');
+      });
+      tile.addEventListener('mouseleave', () => {
+        tile.classList.remove('tile-reachable', 'tile-unreachable');
+      });
+
+      tile.addEventListener('click', () => handleTileClick(x, y));
+      tilesEl.appendChild(tile);
+      if (safe && !cityLabeled) {
+        const label = document.createElement('div');
+        label.className = 'city-label';
+        label.textContent = '🏙️ Varn';
+        label.style.left = (x * TILE + 4) + 'px';
+        label.style.top = (y * TILE - 16) + 'px';
+        tilesEl.appendChild(label);
+        cityLabeled = true;
+      }
+    }
+  }
+
+  (pois || []).forEach(poi => {
+    const label = document.createElement('div');
+    label.className = 'poi-label';
+    label.innerHTML = '<span class="poi-icon">' + poi.icon + '</span>' + escapeHtml(poi.name);
+    label.style.left = (poi.x * TILE + 4) + 'px';
+    label.style.top = (poi.y * TILE - 18) + 'px';
+    tilesEl.appendChild(label);
+  });
+}
+
+function tileEl(x, y) {
+  return tilesEl.querySelector('.tile[data-x="' + x + '"][data-y="' + y + '"]');
+}
+
+function iconFor(npc) {
+  if (npc.IsPlayerControlled) return '👤';
+  if (!npc.IsLLM) return '☠️';
+  return ROLE_ICON[npc.Role] || '🧑';
+}
+function hpColor(pct) {
+  if (pct > 60) return 'var(--hp-good)';
+  if (pct > 25) return 'var(--hp-mid)';
+  return 'var(--hp-bad)';
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function upsertChip(npc) {
+  let el = state.npcElements[npc.Name];
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'npc-chip' + (npc.IsLLM ? '' : ' monster') + (npc.IsPlayerControlled ? ' player' : '');
+    el.innerHTML =
+      '<span class="glyph"></span>' +
+      '<span class="mini-hp"><span></span></span>' +
+      '<span class="name-label"></span>';
+
+    el.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      onEntityClick(npc.Name, el);
+    });
+
+    npcLayerEl.appendChild(el);
+    state.npcElements[npc.Name] = el;
+  }
+
+  el.style.left = (npc.Position.X * TILE + TILE / 2 - 16) + 'px';
+  el.style.top = (npc.Position.Y * TILE + TILE / 2 - 16) + 'px';
+  el.querySelector('.glyph').textContent = iconFor(npc);
+  el.querySelector('.name-label').textContent = (npc.IsLLM || npc.IsPlayerControlled) ? npc.Name : '';
+
+  const pct = Math.max(0, Math.min(100, 100 * npc.HP / npc.MaxHP));
+  const hp = el.querySelector('.mini-hp > span');
+  hp.style.width = pct + '%';
+  hp.style.background = hpColor(pct);
+  el.title = npc.Name + ' (' + npc.Role + ') — ' + (npc.LastAction || '');
+  el.classList.toggle('dead', npc.HP <= 0);
+  el.classList.toggle('selected', state.selectedName === npc.Name);
+}
+
+function handleTileClick(x, y) {
+  closeActionMenu();
+  if (!state.myPlayerName || !state.lastSnapshot) {
+    toast('Your character is not on the board yet.', 'error');
+    return;
+  }
+  const me = state.lastSnapshot.npcs[state.myPlayerName];
+  if (!me) return;
+
+  const dx = x - me.Position.X;
+  const dy = y - me.Position.Y;
+
+  if (dx === 0 && dy === 0) {
+    toast('You are already there.', 'error');
+    return;
+  }
+
+  // Same rule the hover preview uses: only a single orthogonal step is a
+  // real move. Anything else (too far, or diagonal) is rejected here
+  // instead of silently walking one step in whatever direction happened to
+  // be "dominant" — that used to happen with zero feedback about why you
+  // didn't end up where you clicked.
+  if (!isCardinalAdjacent(x, y)) {
+    const t = tileEl(x, y);
+    if (t) { t.classList.remove('dest-invalid'); void t.offsetWidth; t.classList.add('dest-invalid'); }
+    const reason = (Math.abs(dx) === 1 && Math.abs(dy) === 1) ? 'diagonal movement isn\u2019t supported' : 'that tile is too far';
+    toast('You can only move one straight step at a time — ' + reason + '.', 'error');
+    return;
+  }
+
+  const direction = dx === 1 ? 'E' : dx === -1 ? 'W' : dy === 1 ? 'S' : 'N';
+
+  const t = tileEl(x, y);
+  if (t) { t.classList.remove('dest-pulse'); void t.offsetWidth; t.classList.add('dest-pulse'); }
+
+  movePlayer(direction, { x, y });
+}
+
+function onEntityClick(name, chipEl) {
+  if (name === state.myPlayerName) {
+    toast('This is you.', 'success');
+    return;
+  }
+  selectEntity(name);
+  openActionMenu(name, chipEl);
+}
+
+function selectEntity(name) {
+  if (state.selectedName && state.npcElements[state.selectedName]) {
+    state.npcElements[state.selectedName].classList.remove('selected');
+  }
+  state.selectedName = name;
+  if (state.npcElements[name]) state.npcElements[name].classList.add('selected');
+  document.querySelectorAll('.roster-item').forEach(el => {
+    el.classList.toggle('is-selected', el.dataset.name === name);
+  });
+}
+
+function clearSelection() {
+  if (state.selectedName && state.npcElements[state.selectedName]) {
+    state.npcElements[state.selectedName].classList.remove('selected');
+  }
+  state.selectedName = null;
+  document.querySelectorAll('.roster-item').forEach(el => el.classList.remove('is-selected'));
+}
+
+let activeMenuEl = null;
+
+function closeActionMenu() {
+  if (activeMenuEl) { activeMenuEl.remove(); activeMenuEl = null; }
+}
+
+function openActionMenu(name, anchorEl) {
+  closeActionMenu();
+  const npc = state.lastSnapshot.npcs[name];
+  if (!npc) return;
+
+  const menu = document.createElement('div');
+  menu.className = 'action-menu';
+
+  const title = document.createElement('div');
+  title.className = 'menu-title';
+  title.textContent = name + ' — target selected';
+  menu.appendChild(title);
+
+  const isAlive = npc.HP > 0;
+  const isAINPC = npc.IsLLM;
+
+  if (isAlive && isAINPC) {
+    menu.appendChild(menuButton('💬 Talk', () => { closeActionMenu(); openConversation(name); }));
+  }
+  if (isAlive) {
+    menu.appendChild(menuButton('⚔️ Attack', () => { closeActionMenu(); confirmAttack(name, anchorEl); }, true));
+  }
+  menu.appendChild(menuButton('📜 History', () => { closeActionMenu(); openHistory(name); }));
+
+  if (!isAlive) {
+    const dead = document.createElement('div');
+    dead.style.cssText = 'padding:6px 8px; font-size:0.78rem; color: var(--dim);';
+    dead.textContent = 'This character has fallen.';
+    menu.appendChild(dead);
+  }
+
+  document.body.appendChild(menu);
+  const rect = anchorEl.getBoundingClientRect();
+  menu.style.left = (window.scrollX + rect.right + 10) + 'px';
+  menu.style.top = (window.scrollY + rect.top - 8) + 'px';
+  activeMenuEl = menu;
+}
+
+function menuButton(label, onClick, danger) {
+  const btn = document.createElement('button');
+  if (danger) btn.classList.add('danger');
+  btn.textContent = label;
+  btn.addEventListener('click', onClick);
+  return btn;
+}
+
+document.addEventListener('click', () => closeActionMenu());
+
+async function movePlayer(direction, expectedTile) {
+  const destTileEl = expectedTile ? tileEl(expectedTile.x, expectedTile.y) : null;
+  setPendingAction('Next tick: heading ' + directionLabel(direction) + '...', { tileEl: destTileEl });
+  try {
+    await doMove(direction);
+    if (expectedTile) {
+      toast('Heading ' + directionLabel(direction) + '...', 'success');
+    }
+  } catch (err) {
+    clearPendingAction();
+    toast('Could not move: ' + err.message, 'error');
+    if (expectedTile) {
+      const t = tileEl(expectedTile.x, expectedTile.y);
+      if (t) { t.classList.remove('dest-invalid'); void t.offsetWidth; t.classList.add('dest-invalid'); }
+    }
+  }
+}
+function directionLabel(d) {
+  return { N: 'north', S: 'south', E: 'east', W: 'west' }[d] || d;
+}
+
+function confirmAttack(name, targetEl) {
+  setPendingAction('Next tick: attacking ' + name + '...', { targetEl: targetEl || state.npcElements[name] });
+  doAttack(name)
+    .then(() => toast('Attacking ' + name + '...', 'success'))
+    .catch(err => { clearPendingAction(); toast('Attack unavailable: ' + err.message, 'error'); });
+}
+
+const convModal = document.getElementById('convModal');
+const convTitle = document.getElementById('convTitle');
+const convThread = document.getElementById('convThread');
+const convInput = document.getElementById('convInput');
+const convSendBtn = document.getElementById('convSendBtn');
+const convStatus = document.getElementById('convStatus');
+
+function openConversation(name) {
+  state.activeConversationWith = name;
+  convTitle.textContent = name;
+  convInput.value = '';
+  convStatus.textContent = '';
+  convModal.classList.remove('hidden');
+  renderConversation(name);
+  convInput.focus();
+}
+
+function renderConversation(name) {
+  const dialogue = (state.lastSnapshot && state.lastSnapshot.dialogue) || [];
+  const me = state.myPlayerName;
+  const thread = dialogue.filter(e =>
+    (e.from === me && e.to === name) || (e.from === name && e.to === me)
+  );
+
+  if (!thread.length) {
+    convThread.innerHTML = '<div class="conv-empty">No messages yet. Say hello!</div>';
+    return;
+  }
+
+  convThread.innerHTML = thread.map(e => {
+    const mine = e.from === me;
+    return '<div class="conv-msg ' + (mine ? 'me' : 'them') + '">' +
+      '<span class="who">' + escapeHtml(e.from) + '</span>' +
+      escapeHtml(e.text) +
+      '</div>';
+  }).join('');
+  convThread.scrollTop = convThread.scrollHeight;
+}
+
+async function sendConversationMessage() {
+  const name = state.activeConversationWith;
+  const message = convInput.value.trim();
+  if (!name || !message) return;
+
+  convSendBtn.disabled = true;
+  convStatus.textContent = 'Waiting for response...';
+  setPendingAction('Next tick: talking to ' + name + '...', { targetEl: state.npcElements[name] });
+  try {
+    await doTalk(name, message);
+    convInput.value = '';
+    convStatus.textContent = message + ' sent — the reply arrives on ' + name + '\u2019s next turn.';
+  } catch (err) {
+    clearPendingAction();
+    convStatus.textContent = 'Message unavailable: ' + err.message;
+  } finally {
+    convSendBtn.disabled = false;
+  }
+}
+
+convSendBtn.addEventListener('click', sendConversationMessage);
+convInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendConversationMessage(); });
+document.getElementById('closeConv').addEventListener('click', () => {
+  convModal.classList.add('hidden');
+  state.activeConversationWith = null;
+});
+
+function flashHit(name) {
+  const el = state.npcElements[name];
+  if (!el) return;
+  el.classList.remove('hit-flash'); void el.offsetWidth; el.classList.add('hit-flash');
+}
+
+function spawnFloatText(name, delta) {
+  const el = state.npcElements[name];
+  if (!el) return;
+  const span = document.createElement('div');
+  span.className = 'float-text ' + (delta < 0 ? 'dmg' : 'heal');
+  span.textContent = (delta < 0 ? '' : '+') + delta;
+  span.style.left = el.style.left;
+  span.style.top = (parseFloat(el.style.top) - 14) + 'px';
+  npcLayerEl.appendChild(span);
+  setTimeout(() => span.remove(), 1150);
+}
+
+function spawnSpeechBubble(fromName, text) {
+  const el = state.npcElements[fromName];
+  if (!el) return;
+  const bubble = document.createElement('div');
+  bubble.className = 'speech-bubble';
+  bubble.textContent = text.length > 120 ? text.slice(0, 117) + '...' : text;
+  bubble.style.left = (parseFloat(el.style.left) - 80) + 'px';
+  bubble.style.top = (parseFloat(el.style.top) - 58) + 'px';
+  npcLayerEl.appendChild(bubble);
+  setTimeout(() => bubble.remove(), 4000);
+}
+
+function toast(message, kind) {
+  const el = document.createElement('div');
+  el.className = 'toast' + (kind ? ' ' + kind : '');
+  el.textContent = message;
+  toastLayerEl.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+function renderRoster(npcs) {
+  let html = '';
+  for (const name in npcs) {
+    const npc = npcs[name];
+    if ((npc.IsLLM || npc.IsPlayerControlled) && npc.HP > 0) {
+      const pct = Math.max(0, Math.min(100, 100 * npc.HP / npc.MaxHP));
+      html +=
+        '<div class="roster-item' + (state.selectedName === name ? ' is-selected' : '') + '" data-name="' + escapeHtml(npc.Name) + '" data-player="' + (npc.IsPlayerControlled ? 'true' : 'false') + '">' +
+          '<div class="roster-name"><span>' + iconFor(npc) + ' ' + escapeHtml(npc.Name) + '</span><span class="role">' + (npc.IsPlayerControlled ? 'You' : escapeHtml(npc.Role)) + '</span></div>' +
+          '<div class="hpbar"><div style="width:' + pct + '%;background:' + hpColor(pct) + '"></div></div>' +
+          '<div class="last-action">' + escapeHtml(npc.LastAction || 'observing the surroundings...') + '</div>' +
+        '</div>';
+    }
+    if (npc.LastAction && state.lastActions[npc.Name] !== npc.LastAction) {
+      if (state.lastActions[npc.Name] !== undefined) addFeedLine(npc.Name, npc.LastAction);
+      state.lastActions[npc.Name] = npc.LastAction;
+    }
+  }
+  rosterEl.innerHTML = html || '<div class="dialogue-empty">No characters alive.</div>';
+  rosterEl.querySelectorAll('.roster-item').forEach(el => {
+    el.addEventListener('click', () => {
+      if (el.dataset.player === 'true') return;
+      selectEntity(el.dataset.name);
+      openActionMenu(el.dataset.name, state.npcElements[el.dataset.name] || el);
+    });
+  });
+}
+
+function renderHUD(npcs) {
+  const me = state.myPlayerName ? npcs[state.myPlayerName] : null;
+  if (!me) {
+    hudBodyEl.innerHTML = 'Waiting for your character to appear...';
+    return;
+  }
+  const pct = Math.max(0, Math.min(100, 100 * me.HP / me.MaxHP));
+  const pendingHtml = state.pendingAction
+    ? '<div class="pending-banner"><span class="spinner"></span>' + escapeHtml(state.pendingAction) + '</div>'
+    : '';
+  hudBodyEl.innerHTML =
+    pendingHtml +
+    '<div class="hud-row"><span class="hud-name">👤 ' + escapeHtml(me.Name) + '</span></div>' +
+    '<div class="hpbar"><div style="width:' + pct + '%;background:' + hpColor(pct) + '"></div></div>' +
+    '<div class="hud-stat">HP <b>' + me.HP + ' / ' + me.MaxHP + '</b> · Level <b>' + me.Level + '</b> · Gold <b>' + me.Gold + '</b></div>' +
+    '<div class="last-action" style="margin-top:6px;">' + escapeHtml(me.LastAction || 'Click a tile to move, or a character to interact.') + '</div>';
+}
+
+function addFeedLine(name, text) {
+  const line = document.createElement('div');
+  line.className = 'feed-line';
+  const b = document.createElement('b');
+  b.textContent = name;
+  b.addEventListener('click', () => openHistory(name));
+  line.appendChild(b);
+  line.append(' ' + text);
+  feedEl.prepend(line);
+  while (feedEl.children.length > 30) feedEl.removeChild(feedEl.lastChild);
+}
+function renderFeed() {  }
+
+const historyModal = document.getElementById('historyModal');
+const historyTitle = document.getElementById('historyTitle');
+const historyList = document.getElementById('historyList');
+const historyFilter = document.getElementById('historyFilter');
+let currentHistory = [];
+
+document.getElementById('closeHistory').addEventListener('click', () => historyModal.classList.add('hidden'));
+
+async function openHistory(name) {
+  historyTitle.textContent = name;
+  historyList.innerHTML = '<div class="history-empty">Loading memories...</div>';
+  historyModal.classList.remove('hidden');
+
+  const others = [...state.knownNames].filter(n => n !== name).sort();
+  historyFilter.innerHTML = '<option value="">All</option>' + others.map(n => '<option>' + escapeHtml(n) + '</option>').join('');
+  historyFilter.value = '';
+
+  try {
+    currentHistory = await fetchHistory(name);
+    applyHistoryFilter();
+  } catch (err) {
+    currentHistory = [];
+    historyList.innerHTML = '<div class="history-empty">No history yet for ' + escapeHtml(name) + '</div>';
+  }
+}
+
+function applyHistoryFilter() {
+  const filter = historyFilter.value;
+  const filtered = filter ? currentHistory.filter(line => line.includes(filter)) : currentHistory;
+  historyList.innerHTML = filtered.length
+    ? filtered.map(line => '<div class="history-line">' + escapeHtml(line) + '</div>').join('')
+    : '<div class="history-empty">No records found with this filter.</div>';
+}
+historyFilter.addEventListener('change', applyHistoryFilter);
+
+function submitFreeCommand() {
+  const input = document.getElementById('freeCommandInput');
+  const val = input.value.trim();
+  if (!val) { toast('Type a command first.', 'error'); return; }
+  setPendingAction('Next tick: ' + val);
+  doCustom(val)
+    .then(() => { toast('Action sent.', 'success'); input.value = ''; })
+    .catch(err => { clearPendingAction(); toast('Action unavailable: ' + err.message, 'error'); });
+}
+document.getElementById('freeCommandInput').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') submitFreeCommand();
+});
+document.getElementById('advancedToggle').addEventListener('click', () => {
+  const panel = document.getElementById('advancedPanel');
+  const open = panel.classList.toggle('open');
+  document.getElementById('advancedToggle').textContent = open ? 'Advanced controls ▴' : 'Advanced controls ▾';
+});
+
+const tilesEl = document.getElementById('tiles');
+const npcLayerEl = document.getElementById('npcLayer');
+const mapOuterEl = document.getElementById('mapOuter');
+const rosterEl = document.getElementById('roster');
+const feedEl = document.getElementById('feed');
+const tickEl = document.getElementById('tick');
+const dotEl = document.getElementById('dot');
+const statusEl = document.getElementById('statusText');
+const hudBodyEl = document.getElementById('hudBody');
+const toastLayerEl = document.getElementById('toastLayer');
+
+window.addEventListener('click', (e) => {
+  if (e.target === historyModal) historyModal.classList.add('hidden');
+  if (e.target === convModal) { convModal.classList.add('hidden'); state.activeConversationWith = null; }
+});
+
+window.addEventListener('keydown', (e) => {
+  if (document.activeElement && ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+  const map = { ArrowUp: 'N', ArrowDown: 'S', ArrowLeft: 'W', ArrowRight: 'E', w: 'N', s: 'S', a: 'W', d: 'E' };
+  if (map[e.key]) movePlayer(map[e.key]);
+});
+</script>
+</body>
+</html>
